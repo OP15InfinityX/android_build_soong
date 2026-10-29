@@ -102,8 +102,8 @@ def parse_args():
   config["BuildVersionTags"] = build_version_tags
 
   raw_date = args.date_file.read().strip()
-  config["Date"] = subprocess.check_output(["date", "-d", f"@{raw_date}"], text=True).strip()
-  config["DateUtc"] = subprocess.check_output(["date", "-d", f"@{raw_date}", "+%s"], text=True).strip()
+  config["Date"] = subprocess.check_output(["date", "-ud", f"@{raw_date}"], text=True).strip()
+  config["DateUtc"] = subprocess.check_output(["date", "-ud", f"@{raw_date}", "+%s"], text=True).strip()
 
   # build_desc is human readable strings that describe this build. This has the same info as the
   # build fingerprint.
@@ -125,6 +125,12 @@ def parse_args():
     config["BuildNumber"] = config["DateUtc"]
 
   override_config(config)
+  # If only BuildFingerprint was overridden, keep the system partition in sync
+  # unless the device overrode BuildSystemFingerprint itself.
+  overrides = config.get("PRODUCT_BUILD_PROP_OVERRIDES", [])
+  if any(v.startswith("BuildFingerprint=") for v in overrides) \
+          and not any(v.startswith("BuildSystemFingerprint=") for v in overrides):
+      config["BuildSystemFingerprint"] = config["BuildFingerprint"]
   if args.partition == "system":
     config['ProductBrand'] = config['SystemBrand']
     config['DeviceName'] = config['SystemDevice']
